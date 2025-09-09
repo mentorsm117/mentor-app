@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Наставник </title>
+    <title>Наставник</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -421,6 +421,21 @@
             font-size: 0.8rem;
             margin-left: 5px;
         }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--gray);
+        }
+
+        .error-message {
+            background: #ffe6e6;
+            color: var(--danger);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -465,10 +480,11 @@
                     </div>
                     <div class="tabs">
                         <div class="tab active" onclick="switchTab('trainees', 'week-trainees', this)">До недели</div>
-                        <div class="tab" onclick="switchTab('trainees', 'month-trainees')">До месяца</div>
-                        <div class="tab" onclick="switchTab('trainees', 'quarter-trainees')">До 3 месяцев</div>
+                        <div class="tab" onclick="switchTab('trainees', 'month-trainees', this)">До месяца</div>
+                        <div class="tab" onclick="switchTab('trainees', 'quarter-trainees', this)">До 3 месяцев</div>
                     </div>
                     <div class="tab-content active" id="week-trainees">
+                        <div class="loading" id="loading-trainees">Загрузка стажеров...</div>
                         <table>
                             <thead>
                                 <tr>
@@ -479,7 +495,6 @@
                                 </tr>
                             </thead>
                             <tbody id="week-trainees-list">
-                                <!-- Данные будут добавлены через JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -494,7 +509,6 @@
                                 </tr>
                             </thead>
                             <tbody id="month-trainees-list">
-                                <!-- Данные будут добавлены через JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -509,7 +523,6 @@
                                 </tr>
                             </thead>
                             <tbody id="quarter-trainees-list">
-                                <!-- Данные будут добавлены через JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -520,18 +533,20 @@
                         <h2 class="card-title">Ближайшие события</h2>
                         <button class="btn" onclick="openModal('addEventModal')"><i class="fas fa-plus"></i> Добавить</button>
                     </div>
+                    <div class="loading" id="loading-events">Загрузка событий...</div>
                     <ul class="event-list" id="events-list">
-                        <!-- Данные будут добавлены через JavaScript -->
                     </ul>
                 </div>
             </div>
+
+            <div class="column">
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Задания от руководителя</h2>
                         <button class="btn" onclick="openModal('addTaskModal')"><i class="fas fa-plus"></i> Добавить</button>
                     </div>
+                    <div class="loading" id="loading-tasks">Загрузка заданий...</div>
                     <div id="tasks-list">
-                        <!-- Данные будут добавлены через JavaScript -->
                     </div>
                 </div>
             </div>
@@ -621,464 +636,510 @@
             <p>Рабочее пространство для отслеживания &copy; 2025</p>
         </div>
     </footer>
-<script>
-    // URL вашего Google Apps Script веб-приложения
-    const API_URL = 'https://script.google.com/macros/s/AKfycbyMObQc7HSecZrNjmKEDnVrlVhZuaQlN5oItZXI3O0lXAo06bs8FoVtiGtRGcxszqzV/exec';
 
-    // Данные приложения
-    let appData = {
-        trainees: [],
-        events: [],
-        tasks: []
-    };
+    <script>
+        // URL вашего Google Apps Script веб-приложения
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyMObQc7HSecZrNjmKEDnVrlVhZuaQlN5oItZXI3O0lXAo06bs8FoVtiGtRGcxszqzV/exec';
 
-    // --- ВСЕ ФУНКЦИИ ДОЛЖНЫ БЫТЬ ЗДЕСЬ, ВНЕ DOMContentLoaded ---
-
-    // Открытие модального окна
-    function openModal(modalId) {
-        document.getElementById(modalId).style.display = 'flex';
-    }
-
-    // Закрытие модального окна
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-
-    // Переключение вкладок
-    function switchTab(prefix, tabId, element) {
-        // Скрыть все вкладки с указанным префиксом
-        document.querySelectorAll(`.tab-content`).forEach(tab => {
-            if (tab.id.startsWith(prefix)) {
-                tab.classList.remove('active');
-            }
-        });
-
-        // Показать выбранную вкладку
-        document.getElementById(tabId).classList.add('active');
-
-        // Обновить активные табы
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        element.classList.add('active');
-    }
-
-    // Загрузка данных из Google Sheets
-    async function loadData() {
-        try {
-            const [trainees, events, tasks] = await Promise.all([
-                fetchData('Trainees'),
-                fetchData('Events'),
-                fetchData('Tasks')
-            ]);
-            
-            appData.trainees = trainees || [];
-            appData.events = events || [];
-            appData.tasks = tasks || [];
-            
-            renderAllData();
-        } catch (error) {
-            console.error('Ошибка загрузки:', error);
-            alert('Ошибка загрузки данных');
-        }
-    }
-
-    // Запрос данных с сервера
-    async function fetchData(sheetName) {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'getAll', sheet: sheetName})
-        });
-        return await response.json();
-    }
-
-    // Сохранение данных на сервер
-    async function saveData(type, data) {
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    action: 'add',
-                    sheet: type,
-                    data: data
-                })
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                await loadData(); // Перезагружаем данные
-            }
-        } catch (error) {
-            console.error('Ошибка сохранения:', error);
-            alert('Ошибка сохранения данных');
-        }
-    }
-
-    // Удаление данных с сервера
-    async function deleteData(type, id) {
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    action: 'delete',
-                    sheet: type,
-                    id: id
-                })
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                await loadData(); // Перезагружаем данные
-            }
-        } catch (error) {
-            console.error('Ошибка удаления:', error);
-            alert('Ошибка удаления данных');
-        }
-    }
-
-    // Обновление данных на сервере
-    async function updateData(type, id, data) {
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    action: 'update',
-                    sheet: type,
-                    id: id,
-                    data: data
-                })
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                await loadData(); // Перезагружаем данные
-            }
-        } catch (error) {
-            console.error('Ошибка обновления:', error);
-            alert('Ошибка обновления данных');
-        }
-    }
-
-    // Добавление стажера
-    async function addTrainee(e) {
-        e.preventDefault();
-        
-        const name = document.getElementById('traineeName').value;
-        const startDate = document.getElementById('traineeStartDate').value;
-        const grade = document.getElementById('traineeGrade').value;
-        
-        const traineeData = {
-            ID: Date.now(),
-            Name: name,
-            StartDate: startDate,
-            Grade: grade,
-            Days: 0
+        // Данные приложения
+        let appData = {
+            trainees: [],
+            events: [],
+            tasks: []
         };
-        
-        await saveData('Trainees', traineeData);
-        closeModal('addTraineeModal');
-        e.target.reset();
-    }
 
-    // Добавление события
-    async function addEvent(e) {
-        e.preventDefault();
-        
-        const title = document.getElementById('eventTitle').value;
-        const date = document.getElementById('eventDate').value;
-        const description = document.getElementById('eventDescription').value;
-        
-        const eventData = {
-            ID: Date.now(),
-            Title: title,
-            Date: date,
-            Description: description
-        };
-        
-        await saveData('Events', eventData);
-        closeModal('addEventModal');
-        e.target.reset();
-    }
-
-    // Добавление задания
-    async function addTask(e) {
-        e.preventDefault();
-        
-        const title = document.getElementById('taskTitle').value;
-        const description = document.getElementById('taskDescription').value;
-        const deadline = document.getElementById('taskDeadline').value;
-        
-        const taskData = {
-            ID: Date.now(),
-            Title: title,
-            Description: description,
-            Deadline: deadline,
-            Completed: false
-        };
-        
-        await saveData('Tasks', taskData);
-        closeModal('addTaskModal');
-        e.target.reset();
-    }
-
-    // Удаление стажера
-    async function deleteTrainee(id) {
-        if (confirm('Удалить стажера?')) {
-            await deleteData('Trainees', id);
+        // Функции для работы с модальными окнами
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
         }
-    }
 
-    // Удаление события
-    async function deleteEvent(id) {
-        if (confirm('Удалить событие?')) {
-            await deleteData('Events', id);
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
-    }
 
-    // Удаление задания
-    async function deleteTask(id) {
-        if (confirm('Удалить задание?')) {
-            await deleteData('Tasks', id);
-        }
-    }
-
-    // Переключение выполнения задания
-    async function toggleTaskCompletion(id) {
-        const task = appData.tasks.find(task => task.ID === id);
-        if (task) {
-            const updatedTask = {...task, Completed: !task.Completed};
-            await updateData('Tasks', id, updatedTask);
-        }
-    }
-
-    // Обновление счетчиков стажеров
-    function updateTraineeCounts() {
-        const now = new Date();
-        let weekCount = 0;
-        let monthCount = 0;
-        let quarterCount = 0;
-        
-        appData.trainees.forEach(trainee => {
-            const startDate = new Date(trainee.StartDate);
-            const diffTime = Math.abs(now - startDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays <= 7) weekCount++;
-            if (diffDays <= 30) monthCount++;
-            if (diffDays <= 90) quarterCount++;
-        });
-        
-        document.getElementById('trainee-week-count').textContent = weekCount;
-        document.getElementById('trainee-month-count').textContent = monthCount;
-        document.getElementById('trainee-quarter-count').textContent = quarterCount;
-    }
-
-    // Отображение всех данных
-    function renderAllData() {
-        renderTrainees();
-        renderEvents();
-        renderTasks();
-        updateTraineeCounts();
-    }
-
-    // Отображение стажеров
-    function renderTrainees() {
-        const now = new Date();
-        const weekTrainees = [];
-        const monthTrainees = [];
-        const quarterTrainees = [];
-        
-        appData.trainees.forEach(trainee => {
-            const startDate = new Date(trainee.StartDate);
-            const diffTime = Math.abs(now - startDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            const traineeWithDays = {...trainee, days: diffDays};
-            
-            if (diffDays <= 7) weekTrainees.push(traineeWithDays);
-            else if (diffDays <= 30) monthTrainees.push(traineeWithDays);
-            else if (diffDays <= 90) quarterTrainees.push(traineeWithDays);
-        });
-        
-        renderTraineeList('week-trainees-list', weekTrainees);
-        renderTraineeList('month-trainees-list', monthTrainees);
-        renderTraineeList('quarter-trainees-list', quarterTrainees);
-    }
-
-    // Отображение списка стажеров
-    function renderTraineeList(elementId, trainees) {
-        const listElement = document.getElementById(elementId);
-        listElement.innerHTML = '';
-        
-        if (trainees.length === 0) {
-            listElement.innerHTML = '<tr><td colspan="4" style="text-align: center;">Нет данных</td></tr>';
-            return;
-        }
-        
-        trainees.forEach(trainee => {
-            const gradeText = getGradeText(trainee.Grade);
-            const gradeClass = getGradeClass(trainee.Grade);
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${trainee.Name}</td>
-                <td><span class="badge ${gradeClass}">${gradeText}</span></td>
-                <td>${trainee.days}</td>
-                <td>
-                    <button class="btn btn-danger" onclick="deleteTrainee(${trainee.ID})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            listElement.appendChild(row);
-        });
-    }
-
-    // Получение текста оценки
-    function getGradeText(grade) {
-        switch(grade) {
-            case '5': return 'Отлично';
-            case '4': return 'Хорошо';
-            case '3': return 'Удовлетворительно';
-            case '2': return 'Неудовлетворительно';
-            default: return 'Не оценено';
-        }
-    }
-
-    // Получение класса для оценки
-    function getGradeClass(grade) {
-        switch(grade) {
-            case '5': return 'badge-success';
-            case '4': return 'badge-info';
-            case '3': return 'badge-warning';
-            case '2': return 'badge-danger';
-            default: return 'badge-info';
-        }
-    }
-
-    // Отображение событий
-    function renderEvents() {
-        const eventsList = document.getElementById('events-list');
-        eventsList.innerHTML = '';
-        
-        if (appData.events.length === 0) {
-            eventsList.innerHTML = '<li class="event-item">Нет событий</li>';
-            return;
-        }
-        
-        // Сортировка событий по дате
-        const sortedEvents = [...appData.events].sort((a, b) => new Date(a.Date) - new Date(b.Date));
-        
-        sortedEvents.forEach(event => {
-            const eventDate = new Date(event.Date);
-            const formattedDate = eventDate.toLocaleDateString('ru-RU', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-            });
-            
-            const eventElement = document.createElement('li');
-            eventElement.className = 'event-item';
-            eventElement.innerHTML = `
-                <div class="event-date">${formattedDate}</div>
-                <div class="event-title">${event.Title}</div>
-                <div class="event-desc">${event.Description}</div>
-                <button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteEvent(${event.ID})">
-                    <i class="fas fa-trash"></i> Удалить
-                </button>
-            `;
-            eventsList.appendChild(eventElement);
-        });
-    }
-
-    // Отображение заданий
-    function renderTasks() {
-        const tasksList = document.getElementById('tasks-list');
-        tasksList.innerHTML = '';
-        
-        if (appData.tasks.length === 0) {
-            tasksList.innerHTML = '<div class="task-item">Нет заданий</div>';
-            return;
-        }
-        
-        // Сортировка заданий по дате
-        const sortedTasks = [...appData.tasks].sort((a, b) => new Date(a.Deadline) - new Date(b.Deadline));
-        
-        sortedTasks.forEach(task => {
-            const deadline = new Date(task.Deadline);
-            const now = new Date();
-            const timeDiff = deadline - now;
-            const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-            
-            let taskClass = 'task-item';
-            if (task.Completed) {
-                taskClass += ' completed';
-            } else if (daysDiff < 2) {
-                taskClass += ' urgent';
-            }
-            
-            const formattedDeadline = deadline.toLocaleDateString('ru-RU', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            const taskElement = document.createElement('div');
-            taskElement.className = taskClass;
-            taskElement.innerHTML = `
-                <div class="task-info">
-                    <h3>${task.Title}</h3>
-                    <p>${task.Description}</p>
-                    <div class="task-deadline">Срок: ${formattedDeadline}</div>
-                </div>
-                <div>
-                    <div class="countdown">${task.Completed ? 'Выполнено' : `Осталось: ${daysDiff} дн.`}</div>
-                    <div style="display: flex; gap: 5px; margin-top: 10px;">
-                        <button class="btn ${task.Completed ? 'btn-warning' : 'btn-success'}" onclick="toggleTaskCompletion(${task.ID})">
-                            <i class="fas ${task.Completed ? 'fa-undo' : 'fa-check'}"></i> ${task.Completed ? 'Вернуть' : 'Выполнить'}
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteTask(${task.ID})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            tasksList.appendChild(taskElement);
-        });
-    }
-
-    // --- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ ---
-    document.addEventListener('DOMContentLoaded', function() {
-        // Назначаем обработчики форм
-        document.getElementById('addTraineeForm').addEventListener('submit', addTrainee);
-        document.getElementById('addEventForm').addEventListener('submit', addEvent);
-        document.getElementById('addTaskForm').addEventListener('submit', addTask);
-        
-        // Загружаем данные
-        loadData();
-        
-        // Закрытие модальных окон при клике вне их
-        window.addEventListener('click', function(event) {
-            const modals = document.querySelectorAll('.modal');
-            modals.forEach(modal => {
-                if (event.target === modal) {
-                    modal.style.display = 'none';
+        // Переключение вкладок
+        function switchTab(prefix, tabId, element) {
+            document.querySelectorAll(`.tab-content`).forEach(tab => {
+                if (tab.id.startsWith(prefix)) {
+                    tab.classList.remove('active');
                 }
             });
+
+            document.getElementById(tabId).classList.add('active');
+
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            element.classList.add('active');
+        }
+
+        // Функции для работы с API
+        async function fetchData(sheetName) {
+            try {
+                showLoading(sheetName.toLowerCase());
+                
+                const url = `${API_URL}?sheet=${encodeURIComponent(sheetName)}&action=getAll`;
+                console.log('Fetching data from:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Data received:', data);
+                
+                hideLoading(sheetName.toLowerCase());
+                return Array.isArray(data) ? data : [];
+                
+            } catch (error) {
+                console.error('Fetch error:', error);
+                hideLoading(sheetName.toLowerCase());
+                showError(sheetName.toLowerCase(), 'Ошибка загрузки данных');
+                return [];
+            }
+        }
+
+        async function saveData(type, data) {
+            try {
+                const url = `${API_URL}?action=add&sheet=${encodeURIComponent(type)}&data=${encodeURIComponent(JSON.stringify(data))}`;
+                console.log('Saving data to:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                console.log('Save result:', result);
+                
+                if (result.success) {
+                    await loadData();
+                    return result;
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+                
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('Ошибка сохранения данных: ' + error.message);
+                return {error: error.message};
+            }
+        }
+
+        async function deleteData(type, id) {
+            try {
+                const url = `${API_URL}?action=delete&sheet=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`;
+                console.log('Deleting data:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                console.log('Delete result:', result);
+                
+                if (result.success) {
+                    await loadData();
+                    return result;
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Ошибка удаления данных: ' + error.message);
+                return {error: error.message};
+            }
+        }
+
+        async function updateData(type, id, data) {
+            try {
+                const url = `${API_URL}?action=update&sheet=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}&data=${encodeURIComponent(JSON.stringify(data))}`;
+                console.log('Updating data:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                console.log('Update result:', result);
+                
+                if (result.success) {
+                    await loadData();
+                    return result;
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+                
+            } catch (error) {
+                console.error('Update error:', error);
+                alert('Ошибка обновления данных: ' + error.message);
+                return {error: error.message};
+            }
+        }
+
+        // Вспомогательные функции
+        function showLoading(type) {
+            const loadingElement = document.getElementById(`loading-${type}`);
+            if (loadingElement) {
+                loadingElement.style.display = 'block';
+            }
+        }
+
+        function hideLoading(type) {
+            const loadingElement = document.getElementById(`loading-${type}`);
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+        }
+
+        function showError(type, message) {
+            const container = document.getElementById(`${type}-list`) || document.getElementById(`tasks-list`);
+            if (container) {
+                const errorElement = document.createElement('div');
+                errorElement.className = 'error-message';
+                errorElement.textContent = message;
+                container.appendChild(errorElement);
+            }
+        }
+
+        // Загрузка данных
+        async function loadData() {
+            try {
+                console.log('Loading data...');
+                
+                const [trainees, events, tasks] = await Promise.all([
+                    fetchData('Trainees'),
+                    fetchData('Events'),
+                    fetchData('Tasks')
+                ]);
+                
+                appData.trainees = trainees;
+                appData.events = events;
+                appData.tasks = tasks;
+                
+                renderAllData();
+                
+            } catch (error) {
+                console.error('Load data error:', error);
+            }
+        }
+
+        // Обработчики форм
+        async function addTrainee(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('traineeName').value;
+            const startDate = document.getElementById('traineeStartDate').value;
+            const grade = document.getElementById('traineeGrade').value;
+            
+            const traineeData = {
+                ID: Date.now(),
+                Name: name,
+                StartDate: startDate,
+                Grade: grade,
+                Days: 0
+            };
+            
+            await saveData('Trainees', traineeData);
+            closeModal('addTraineeModal');
+            e.target.reset();
+        }
+
+        async function addEvent(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('eventTitle').value;
+            const date = document.getElementById('eventDate').value;
+            const description = document.getElementById('eventDescription').value;
+            
+            const eventData = {
+                ID: Date.now(),
+                Title: title,
+                Date: date,
+                Description: description
+            };
+            
+            await saveData('Events', eventData);
+            closeModal('addEventModal');
+            e.target.reset();
+        }
+
+        async function addTask(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('taskTitle').value;
+            const description = document.getElementById('taskDescription').value;
+            const deadline = document.getElementById('taskDeadline').value;
+            
+            const taskData = {
+                ID: Date.now(),
+                Title: title,
+                Description: description,
+                Deadline: deadline,
+                Completed: false
+            };
+            
+            await saveData('Tasks', taskData);
+            closeModal('addTaskModal');
+            e.target.reset();
+        }
+
+        // Функции удаления
+        async function deleteTrainee(id) {
+            if (confirm('Удалить стажера?')) {
+                await deleteData('Trainees', id);
+            }
+        }
+
+        async function deleteEvent(id) {
+            if (confirm('Удалить событие?')) {
+                await deleteData('Events', id);
+            }
+        }
+
+        async function deleteTask(id) {
+            if (confirm('Удалить задание?')) {
+                await deleteData('Tasks', id);
+            }
+        }
+
+        // Функции обновления
+        async function toggleTaskCompletion(id) {
+            const task = appData.tasks.find(task => task.ID === id);
+            if (task) {
+                const updatedTask = {...task, Completed: !task.Completed};
+                await updateData('Tasks', id, updatedTask);
+            }
+        }
+
+        // Функции отображения
+        function renderAllData() {
+            renderTrainees();
+            renderEvents();
+            renderTasks();
+            updateTraineeCounts();
+        }
+
+        function updateTraineeCounts() {
+            const now = new Date();
+            let weekCount = 0;
+            let monthCount = 0;
+            let quarterCount = 0;
+            
+            appData.trainees.forEach(trainee => {
+                const startDate = new Date(trainee.StartDate);
+                const diffTime = Math.abs(now - startDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays <= 7) weekCount++;
+                if (diffDays <= 30) monthCount++;
+                if (diffDays <= 90) quarterCount++;
+            });
+            
+            document.getElementById('trainee-week-count').textContent = weekCount;
+            document.getElementById('trainee-month-count').textContent = monthCount;
+            document.getElementById('trainee-quarter-count').textContent = quarterCount;
+        }
+
+        function renderTrainees() {
+            const now = new Date();
+            const weekTrainees = [];
+            const monthTrainees = [];
+            const quarterTrainees = [];
+            
+            appData.trainees.forEach(trainee => {
+                const startDate = new Date(trainee.StartDate);
+                const diffTime = Math.abs(now - startDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                const traineeWithDays = {...trainee, days: diffDays};
+                
+                if (diffDays <= 7) weekTrainees.push(traineeWithDays);
+                else if (diffDays <= 30) monthTrainees.push(traineeWithDays);
+                else if (diffDays <= 90) quarterTrainees.push(traineeWithDays);
+            });
+            
+            renderTraineeList('week-trainees-list', weekTrainees);
+            renderTraineeList('month-trainees-list', monthTrainees);
+            renderTraineeList('quarter-trainees-list', quarterTrainees);
+        }
+
+        function renderTraineeList(elementId, trainees) {
+            const listElement = document.getElementById(elementId);
+            listElement.innerHTML = '';
+            
+            if (trainees.length === 0) {
+                listElement.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #666;">Нет данных</td></tr>';
+                return;
+            }
+            
+            trainees.forEach(trainee => {
+                const gradeText = getGradeText(trainee.Grade);
+                const gradeClass = getGradeClass(trainee.Grade);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${trainee.Name || 'Не указано'}</td>
+                    <td><span class="badge ${gradeClass}">${gradeText}</span></td>
+                    <td>${trainee.days || 0}</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteTrainee(${trainee.ID})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                listElement.appendChild(row);
+            });
+        }
+
+        function getGradeText(grade) {
+            switch(grade) {
+                case '5': return 'Отлично';
+                case '4': return 'Хорошо';
+                case '3': return 'Удовлетворительно';
+                case '2': return 'Неудовлетворительно';
+                default: return 'Не оценено';
+            }
+        }
+
+        function getGradeClass(grade) {
+            switch(grade) {
+                case '5': return 'badge-success';
+                case '4': return 'badge-info';
+                case '3': return 'badge-warning';
+                case '2': return 'badge-danger';
+                default: return 'badge-info';
+            }
+        }
+
+        function renderEvents() {
+            const eventsList = document.getElementById('events-list');
+            eventsList.innerHTML = '';
+            
+            if (appData.events.length === 0) {
+                eventsList.innerHTML = '<li class="event-item">Нет событий</li>';
+                return;
+            }
+            
+            const sortedEvents = [...appData.events].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+            
+            sortedEvents.forEach(event => {
+                const eventDate = new Date(event.Date);
+                const formattedDate = eventDate.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                });
+                
+                const eventElement = document.createElement('li');
+                eventElement.className = 'event-item';
+                eventElement.innerHTML = `
+                    <div class="event-date">${formattedDate}</div>
+                    <div class="event-title">${event.Title || 'Без названия'}</div>
+                    <div class="event-desc">${event.Description || 'Без описания'}</div>
+                    <button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteEvent(${event.ID})">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                `;
+                eventsList.appendChild(eventElement);
+            });
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasks-list');
+            tasksList.innerHTML = '';
+            
+            if (appData.tasks.length === 0) {
+                tasksList.innerHTML = '<div class="task-item">Нет заданий</div>';
+                return;
+            }
+            
+            const sortedTasks = [...appData.tasks].sort((a, b) => new Date(a.Deadline) - new Date(b.Deadline));
+            
+            sortedTasks.forEach(task => {
+                const deadline = new Date(task.Deadline);
+                const now = new Date();
+                const timeDiff = deadline - now;
+                const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+                
+                let taskClass = 'task-item';
+                if (task.Completed) {
+                    taskClass += ' completed';
+                } else if (daysDiff < 2) {
+                    taskClass += ' urgent';
+                }
+                
+                const formattedDeadline = deadline.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const taskElement = document.createElement('div');
+                taskElement.className = taskClass;
+                taskElement.innerHTML = `
+                    <div class="task-info">
+                        <h3>${task.Title || 'Без названия'}</h3>
+                        <p>${task.Description || 'Без описания'}</p>
+                        <div class="task-deadline">Срок: ${formattedDeadline}</div>
+                    </div>
+                    <div>
+                        <div class="countdown">${task.Completed ? 'Выполнено' : `Осталось: ${Math.max(0, daysDiff)} дн.`}</div>
+                        <div style="display: flex; gap: 5px; margin-top: 10px;">
+                            <button class="btn ${task.Completed ? 'btn-warning' : 'btn-success'}" onclick="toggleTaskCompletion(${task.ID})">
+                                <i class="fas ${task.Completed ? 'fa-undo' : 'fa-check'}"></i> ${task.Completed ? 'Вернуть' : 'Выполнить'}
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteTask(${task.ID})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                tasksList.appendChild(taskElement);
+            });
+        }
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            // Назначаем обработчики форм
+            document.getElementById('addTraineeForm').addEventListener('submit', addTrainee);
+            document.getElementById('addEventForm').addEventListener('submit', addEvent);
+            document.getElementById('addTaskForm').addEventListener('submit', addTask);
+            
+            // Закрытие модальных окон
+            window.addEventListener('click', function(event) {
+                const modals = document.querySelectorAll('.modal');
+                modals.forEach(modal => {
+                    if (event.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Загружаем данные
+            loadData();
+            
+            // Автоматическое обновление каждые 30 секунд
+            setInterval(loadData, 30000);
         });
-    });
-</script>
+    </script>
 </body>
 </html>
-
-
-
-
-
-
