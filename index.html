@@ -464,7 +464,7 @@
                         <button class="btn" onclick="openModal('addTraineeModal')"><i class="fas fa-plus"></i> Добавить</button>
                     </div>
                     <div class="tabs">
-                        <div class="tab active" onclick="switchTab('trainees', 'week-trainees')">До недели</div>
+                        <div class="tab active" onclick="switchTab('trainees', 'week-trainees', this)">До недели</div>
                         <div class="tab" onclick="switchTab('trainees', 'month-trainees')">До месяца</div>
                         <div class="tab" onclick="switchTab('trainees', 'quarter-trainees')">До 3 месяцев</div>
                     </div>
@@ -623,7 +623,7 @@
     </footer>
 <script>
     // URL вашего Google Apps Script веб-приложения
-    const API_URL = 'https://script.google.com/macros/s/AKfycbyMObQc7HSecZrNjmKEDnVrlVhZuaQlN5oItZXI3O0lXAo06bs8FoVtiGtRGcxszqzV/exec' ;
+    const API_URL = 'ВАШ_URL_ВЕБ_ПРИЛОЖЕНИЯ';
 
     // Данные приложения
     let appData = {
@@ -631,6 +631,37 @@
         events: [],
         tasks: []
     };
+
+    // --- ВСЕ ФУНКЦИИ ДОЛЖНЫ БЫТЬ ЗДЕСЬ, ВНЕ DOMContentLoaded ---
+
+    // Открытие модального окна
+    function openModal(modalId) {
+        document.getElementById(modalId).style.display = 'flex';
+    }
+
+    // Закрытие модального окна
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Переключение вкладок
+    function switchTab(prefix, tabId, element) {
+        // Скрыть все вкладки с указанным префиксом
+        document.querySelectorAll(`.tab-content`).forEach(tab => {
+            if (tab.id.startsWith(prefix)) {
+                tab.classList.remove('active');
+            }
+        });
+
+        // Показать выбранную вкладку
+        document.getElementById(tabId).classList.add('active');
+
+        // Обновить активные табы
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        element.classList.add('active');
+    }
 
     // Загрузка данных из Google Sheets
     async function loadData() {
@@ -732,10 +763,8 @@
         }
     }
 
-    // Остальные функции остаются почти без изменений, но теперь они работают с асинхронными вызовами
-
-    // Добавление стажера (асинхронная версия)
-    document.getElementById('addTraineeForm').addEventListener('submit', async function(e) {
+    // Добавление стажера
+    async function addTrainee(e) {
         e.preventDefault();
         
         const name = document.getElementById('traineeName').value;
@@ -752,17 +781,72 @@
         
         await saveData('Trainees', traineeData);
         closeModal('addTraineeModal');
-        this.reset();
-    });
+        e.target.reset();
+    }
 
-    // Удаление стажера (асинхронная версия)
+    // Добавление события
+    async function addEvent(e) {
+        e.preventDefault();
+        
+        const title = document.getElementById('eventTitle').value;
+        const date = document.getElementById('eventDate').value;
+        const description = document.getElementById('eventDescription').value;
+        
+        const eventData = {
+            ID: Date.now(),
+            Title: title,
+            Date: date,
+            Description: description
+        };
+        
+        await saveData('Events', eventData);
+        closeModal('addEventModal');
+        e.target.reset();
+    }
+
+    // Добавление задания
+    async function addTask(e) {
+        e.preventDefault();
+        
+        const title = document.getElementById('taskTitle').value;
+        const description = document.getElementById('taskDescription').value;
+        const deadline = document.getElementById('taskDeadline').value;
+        
+        const taskData = {
+            ID: Date.now(),
+            Title: title,
+            Description: description,
+            Deadline: deadline,
+            Completed: false
+        };
+        
+        await saveData('Tasks', taskData);
+        closeModal('addTaskModal');
+        e.target.reset();
+    }
+
+    // Удаление стажера
     async function deleteTrainee(id) {
         if (confirm('Удалить стажера?')) {
             await deleteData('Trainees', id);
         }
     }
 
-    // Переключение выполнения задания (асинхронная версия)
+    // Удаление события
+    async function deleteEvent(id) {
+        if (confirm('Удалить событие?')) {
+            await deleteData('Events', id);
+        }
+    }
+
+    // Удаление задания
+    async function deleteTask(id) {
+        if (confirm('Удалить задание?')) {
+            await deleteData('Tasks', id);
+        }
+    }
+
+    // Переключение выполнения задания
     async function toggleTaskCompletion(id) {
         const task = appData.tasks.find(task => task.ID === id);
         if (task) {
@@ -771,8 +855,212 @@
         }
     }
 
-    // Инициализация при загрузке страницы
+    // Обновление счетчиков стажеров
+    function updateTraineeCounts() {
+        const now = new Date();
+        let weekCount = 0;
+        let monthCount = 0;
+        let quarterCount = 0;
+        
+        appData.trainees.forEach(trainee => {
+            const startDate = new Date(trainee.StartDate);
+            const diffTime = Math.abs(now - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays <= 7) weekCount++;
+            if (diffDays <= 30) monthCount++;
+            if (diffDays <= 90) quarterCount++;
+        });
+        
+        document.getElementById('trainee-week-count').textContent = weekCount;
+        document.getElementById('trainee-month-count').textContent = monthCount;
+        document.getElementById('trainee-quarter-count').textContent = quarterCount;
+    }
+
+    // Отображение всех данных
+    function renderAllData() {
+        renderTrainees();
+        renderEvents();
+        renderTasks();
+        updateTraineeCounts();
+    }
+
+    // Отображение стажеров
+    function renderTrainees() {
+        const now = new Date();
+        const weekTrainees = [];
+        const monthTrainees = [];
+        const quarterTrainees = [];
+        
+        appData.trainees.forEach(trainee => {
+            const startDate = new Date(trainee.StartDate);
+            const diffTime = Math.abs(now - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const traineeWithDays = {...trainee, days: diffDays};
+            
+            if (diffDays <= 7) weekTrainees.push(traineeWithDays);
+            else if (diffDays <= 30) monthTrainees.push(traineeWithDays);
+            else if (diffDays <= 90) quarterTrainees.push(traineeWithDays);
+        });
+        
+        renderTraineeList('week-trainees-list', weekTrainees);
+        renderTraineeList('month-trainees-list', monthTrainees);
+        renderTraineeList('quarter-trainees-list', quarterTrainees);
+    }
+
+    // Отображение списка стажеров
+    function renderTraineeList(elementId, trainees) {
+        const listElement = document.getElementById(elementId);
+        listElement.innerHTML = '';
+        
+        if (trainees.length === 0) {
+            listElement.innerHTML = '<tr><td colspan="4" style="text-align: center;">Нет данных</td></tr>';
+            return;
+        }
+        
+        trainees.forEach(trainee => {
+            const gradeText = getGradeText(trainee.Grade);
+            const gradeClass = getGradeClass(trainee.Grade);
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${trainee.Name}</td>
+                <td><span class="badge ${gradeClass}">${gradeText}</span></td>
+                <td>${trainee.days}</td>
+                <td>
+                    <button class="btn btn-danger" onclick="deleteTrainee(${trainee.ID})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            listElement.appendChild(row);
+        });
+    }
+
+    // Получение текста оценки
+    function getGradeText(grade) {
+        switch(grade) {
+            case '5': return 'Отлично';
+            case '4': return 'Хорошо';
+            case '3': return 'Удовлетворительно';
+            case '2': return 'Неудовлетворительно';
+            default: return 'Не оценено';
+        }
+    }
+
+    // Получение класса для оценки
+    function getGradeClass(grade) {
+        switch(grade) {
+            case '5': return 'badge-success';
+            case '4': return 'badge-info';
+            case '3': return 'badge-warning';
+            case '2': return 'badge-danger';
+            default: return 'badge-info';
+        }
+    }
+
+    // Отображение событий
+    function renderEvents() {
+        const eventsList = document.getElementById('events-list');
+        eventsList.innerHTML = '';
+        
+        if (appData.events.length === 0) {
+            eventsList.innerHTML = '<li class="event-item">Нет событий</li>';
+            return;
+        }
+        
+        // Сортировка событий по дате
+        const sortedEvents = [...appData.events].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+        
+        sortedEvents.forEach(event => {
+            const eventDate = new Date(event.Date);
+            const formattedDate = eventDate.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+            
+            const eventElement = document.createElement('li');
+            eventElement.className = 'event-item';
+            eventElement.innerHTML = `
+                <div class="event-date">${formattedDate}</div>
+                <div class="event-title">${event.Title}</div>
+                <div class="event-desc">${event.Description}</div>
+                <button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteEvent(${event.ID})">
+                    <i class="fas fa-trash"></i> Удалить
+                </button>
+            `;
+            eventsList.appendChild(eventElement);
+        });
+    }
+
+    // Отображение заданий
+    function renderTasks() {
+        const tasksList = document.getElementById('tasks-list');
+        tasksList.innerHTML = '';
+        
+        if (appData.tasks.length === 0) {
+            tasksList.innerHTML = '<div class="task-item">Нет заданий</div>';
+            return;
+        }
+        
+        // Сортировка заданий по дате
+        const sortedTasks = [...appData.tasks].sort((a, b) => new Date(a.Deadline) - new Date(b.Deadline));
+        
+        sortedTasks.forEach(task => {
+            const deadline = new Date(task.Deadline);
+            const now = new Date();
+            const timeDiff = deadline - now;
+            const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+            
+            let taskClass = 'task-item';
+            if (task.Completed) {
+                taskClass += ' completed';
+            } else if (daysDiff < 2) {
+                taskClass += ' urgent';
+            }
+            
+            const formattedDeadline = deadline.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const taskElement = document.createElement('div');
+            taskElement.className = taskClass;
+            taskElement.innerHTML = `
+                <div class="task-info">
+                    <h3>${task.Title}</h3>
+                    <p>${task.Description}</p>
+                    <div class="task-deadline">Срок: ${formattedDeadline}</div>
+                </div>
+                <div>
+                    <div class="countdown">${task.Completed ? 'Выполнено' : `Осталось: ${daysDiff} дн.`}</div>
+                    <div style="display: flex; gap: 5px; margin-top: 10px;">
+                        <button class="btn ${task.Completed ? 'btn-warning' : 'btn-success'}" onclick="toggleTaskCompletion(${task.ID})">
+                            <i class="fas ${task.Completed ? 'fa-undo' : 'fa-check'}"></i> ${task.Completed ? 'Вернуть' : 'Выполнить'}
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteTask(${task.ID})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            tasksList.appendChild(taskElement);
+        });
+    }
+
+    // --- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ ---
     document.addEventListener('DOMContentLoaded', function() {
+        // Назначаем обработчики форм
+        document.getElementById('addTraineeForm').addEventListener('submit', addTrainee);
+        document.getElementById('addEventForm').addEventListener('submit', addEvent);
+        document.getElementById('addTaskForm').addEventListener('submit', addTask);
+        
+        // Загружаем данные
         loadData();
         
         // Закрытие модальных окон при клике вне их
@@ -785,12 +1073,10 @@
             });
         });
     });
-
-    // Остальные функции (renderAllData, renderTrainees, renderEvents, renderTasks) 
-    // остаются без изменений, так как они работают с appData
 </script>
 </body>
 </html>
+
 
 
 
