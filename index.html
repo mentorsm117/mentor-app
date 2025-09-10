@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Наставник </title>
+    <title>Наставник</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -147,6 +147,14 @@
 
         .btn-success:hover {
             background: #27ae60;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
         }
 
         table {
@@ -421,6 +429,57 @@
             font-size: 0.8rem;
             margin-left: 5px;
         }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .grade-select {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .sync-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            z-index: 1000;
+        }
+
+        .sync-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .sync-error {
+            background: var(--danger);
+            color: white;
+        }
+
+        .sync-loading {
+            background: var(--warning);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -464,9 +523,9 @@
                         <button class="btn" onclick="openModal('addTraineeModal')"><i class="fas fa-plus"></i> Добавить</button>
                     </div>
                     <div class="tabs">
-                        <div class="tab active" onclick="switchTab('trainees', 'week-trainees')">До недели</div>
-                        <div class="tab" onclick="switchTab('trainees', 'month-trainees')">До месяца</div>
-                        <div class="tab" onclick="switchTab('trainees', 'quarter-trainees')">До 3 месяцев</div>
+                        <div class="tab active" onclick="switchTab('trainees', 'week-trainees', this)">До недели</div>
+                        <div class="tab" onclick="switchTab('trainees', 'month-trainees', this)">До месяца</div>
+                        <div class="tab" onclick="switchTab('trainees', 'quarter-trainees', this)">До 3 месяцев</div>
                     </div>
                     <div class="tab-content active" id="week-trainees">
                         <table>
@@ -479,7 +538,7 @@
                                 </tr>
                             </thead>
                             <tbody id="week-trainees-list">
-                                <!-- Данные будут добавлены через JavaScript -->
+                                <tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -494,7 +553,7 @@
                                 </tr>
                             </thead>
                             <tbody id="month-trainees-list">
-                                <!-- Данные будут добавлены через JavaScript -->
+                                <tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -509,7 +568,7 @@
                                 </tr>
                             </thead>
                             <tbody id="quarter-trainees-list">
-                                <!-- Данные будут добавлены через JavaScript -->
+                                <tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -521,17 +580,19 @@
                         <button class="btn" onclick="openModal('addEventModal')"><i class="fas fa-plus"></i> Добавить</button>
                     </div>
                     <ul class="event-list" id="events-list">
-                        <!-- Данные будут добавлены через JavaScript -->
+                        <li class="event-item">Загрузка событий...</li>
                     </ul>
                 </div>
             </div>
+
+            <div class="column">
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Задания от руководителя</h2>
                         <button class="btn" onclick="openModal('addTaskModal')"><i class="fas fa-plus"></i> Добавить</button>
                     </div>
                     <div id="tasks-list">
-                        <!-- Данные будут добавлены через JavaScript -->
+                        <div class="task-item">Загрузка заданий...</div>
                     </div>
                 </div>
             </div>
@@ -564,6 +625,36 @@
                     </select>
                 </div>
                 <button type="submit" class="btn btn-success">Добавить</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="editTraineeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Редактировать стажера</h2>
+                <span class="close" onclick="closeModal('editTraineeModal')">&times;</span>
+            </div>
+            <form id="editTraineeForm">
+                <input type="hidden" id="editTraineeId">
+                <div class="form-group">
+                    <label for="editTraineeName">ФИО стажера</label>
+                    <input type="text" id="editTraineeName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="editTraineeStartDate">Дата начала работы</label>
+                    <input type="date" id="editTraineeStartDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="editTraineeGrade">Оценка работы</label>
+                    <select id="editTraineeGrade" class="form-control" required>
+                        <option value="5">Отлично</option>
+                        <option value="4">Хорошо</option>
+                        <option value="3">Удовлетворительно</option>
+                        <option value="2">Неудовлетворительно</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success">Сохранить</button>
             </form>
         </div>
     </div>
@@ -623,6 +714,10 @@
     </footer>
 
     <script>
+        // Конфигурация
+        const SPREADSHEET_ID = 'ВАШ_SPREADSHEET_ID'; // Замените на ID вашей Google таблицы
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiddMvVxwI05GhRZZj5ZlJ80Aeh2cG7ozciK71zCCdSJJY-Ibn6le4dF07KOB_cDR-/exec';
+
         // Данные приложения
         let appData = {
             trainees: [],
@@ -630,38 +725,179 @@
             tasks: []
         };
 
-        // Загрузка данных из localStorage
-        function loadData() {
-            const savedData = localStorage.getItem('gponMentorData');
-            if (savedData) {
-                appData = JSON.parse(savedData);
+        let isOnline = false;
+
+        // Проверка соединения с Google Apps Script
+        async function checkConnection() {
+            try {
+                const response = await fetch(SCRIPT_URL + '?test=1');
+                const result = await response.json();
+                isOnline = result.success === true;
+                return isOnline;
+            } catch (error) {
+                console.warn('Google Apps Script недоступен', error);
+                isOnline = false;
+                return false;
             }
+        }
+
+        // Загрузка данных
+        async function loadData() {
+            showSyncStatus('loading', 'Проверка соединения...');
+            
+            const connected = await checkConnection();
+            
+            if (connected) {
+                await loadFromGoogleSheets();
+            } else {
+                await loadFromLocalStorage();
+                showSyncStatus('error', 'Работа в оффлайн-режиме');
+            }
+            
             renderAllData();
         }
 
-        // Сохранение данных в localStorage
-        function saveData() {
-            localStorage.setItem('gponMentorData', JSON.stringify(appData));
-            updateTraineeCounts();
+        // Загрузка из Google Sheets
+        async function loadFromGoogleSheets() {
+            try {
+                showSyncStatus('loading', 'Загрузка данных...');
+                
+                // Загрузка стажеров
+                const traineesResponse = await fetch(`${SCRIPT_URL}?action=getData&sheetName=trainees`);
+                const traineesResult = await traineesResponse.json();
+                
+                if (traineesResult.success) {
+                    appData.trainees = traineesResult.data || [];
+                }
+
+                // Загрузка событий
+                const eventsResponse = await fetch(`${SCRIPT_URL}?action=getData&sheetName=events`);
+                const eventsResult = await eventsResponse.json();
+                
+                if (eventsResult.success) {
+                    appData.events = eventsResult.data || [];
+                }
+
+                // Загрузка заданий
+                const tasksResponse = await fetch(`${SCRIPT_URL}?action=getData&sheetName=tasks`);
+                const tasksResult = await tasksResponse.json();
+                
+                if (tasksResult.success) {
+                    appData.tasks = tasksResult.data || [];
+                }
+
+                // Сохраняем локальную копию
+                saveToLocalStorage();
+                showSyncStatus('success', 'Данные синхронизированы');
+                
+            } catch (error) {
+                console.error('Ошибка загрузки из Google Sheets:', error);
+                await loadFromLocalStorage();
+                showSyncStatus('error', 'Ошибка синхронизации');
+            }
         }
 
+        // Загрузка из локального хранилища
+        async function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('gponMentorData');
+            if (savedData) {
+                const parsedData = JSON.parse(savedData);
+                appData.trainees = parsedData.trainees || [];
+                appData.events = parsedData.events || [];
+                appData.tasks = parsedData.tasks || [];
+            }
+        }
+
+        // Сохранение в локальное хранилище
+        function saveToLocalStorage() {
+            localStorage.setItem('gponMentorData', JSON.stringify(appData));
+        }
+
+        // Сохранение данных в Google Sheets
+        async function saveData(type, data) {
+            try {
+                showSyncStatus('loading', 'Сохранение данных...');
+                
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'saveData',
+                        spreadsheetId: SPREADSHEET_ID,
+                        sheetName: type,
+                        data: data
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Обновляем локальную копию
+                    appData[type] = data;
+                    saveToLocalStorage();
+                    
+                    showSyncStatus('success', 'Данные сохранены');
+                    return true;
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                
+                // Сохраняем локально как fallback
+                appData[type] = data;
+                saveToLocalStorage();
+                
+                showSyncStatus('error', 'Сохранено локально');
+                return false;
+            }
+        }
+
+        // Показать статус синхронизации
+        function showSyncStatus(type, message) {
+            // Удаляем старый статус
+            const oldStatus = document.getElementById('sync-status');
+            if (oldStatus) oldStatus.remove();
+            
+            const status = document.createElement('div');
+            status.id = 'sync-status';
+            status.className = `sync-status sync-${type}`;
+            status.innerHTML = `
+                ${type === 'loading' ? '<div class="loading"></div>' : ''}
+                ${message}
+            `;
+            
+            document.body.appendChild(status);
+            
+            // Автоматически скрываем через 3 секунды
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    if (status.parentNode) {
+                        status.remove();
+                    }
+                }, 3000);
+            }
+        }
+
+        // Остальные функции (переключение табов, модальные окна, рендеринг) остаются без изменений
+        // ... [Здесь должен быть весь остальной JavaScript код из вашего исходного файла] ...
         // Переключение вкладок
-        function switchTab(prefix, tabId) {
-            // Скрыть все вкладки с указанным префиксом
+        function switchTab(prefix, tabId, element) {
             document.querySelectorAll(`.tab-content`).forEach(tab => {
                 if (tab.id.startsWith(prefix)) {
                     tab.classList.remove('active');
                 }
             });
 
-            // Показать выбранную вкладку
             document.getElementById(tabId).classList.add('active');
 
-            // Обновить активные табы
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            event.target.classList.add('active');
+            element.classList.add('active');
         }
 
         // Открытие модального окна
@@ -675,98 +911,144 @@
         }
 
         // Добавление стажера
-        document.getElementById('addTraineeForm').addEventListener('submit', function(e) {
+        document.getElementById('addTraineeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const name = document.getElementById('traineeName').value;
             const startDate = document.getElementById('traineeStartDate').value;
             const grade = document.getElementById('traineeGrade').value;
             
-            appData.trainees.push({
+            const newTrainee = {
                 id: Date.now(),
                 name,
                 startDate,
-                grade
-            });
+                grade,
+                lastUpdated: new Date().toISOString()
+            };
             
-            saveData();
-            renderTrainees();
+            const updatedTrainees = [...appData.trainees, newTrainee];
+            await saveData('trainees', updatedTrainees);
+            
             closeModal('addTraineeModal');
             this.reset();
+            renderTrainees();
         });
 
+        // Редактирование стажера
+        document.getElementById('editTraineeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('editTraineeId').value);
+            const name = document.getElementById('editTraineeName').value;
+            const startDate = document.getElementById('editTraineeStartDate').value;
+            const grade = document.getElementById('editTraineeGrade').value;
+            
+            const updatedTrainees = appData.trainees.map(trainee => 
+                trainee.id === id ? { ...trainee, name, startDate, grade, lastUpdated: new Date().toISOString() } : trainee
+            );
+            
+            await saveData('trainees', updatedTrainees);
+            closeModal('editTraineeModal');
+            renderTrainees();
+        });
+
+        // Открытие формы редактирования стажера
+        function editTrainee(id) {
+            const trainee = appData.trainees.find(t => t.id === id);
+            if (trainee) {
+                document.getElementById('editTraineeId').value = trainee.id;
+                document.getElementById('editTraineeName').value = trainee.name;
+                document.getElementById('editTraineeStartDate').value = trainee.startDate;
+                document.getElementById('editTraineeGrade').value = trainee.grade;
+                
+                openModal('editTraineeModal');
+            }
+        }
+
         // Добавление события
-        document.getElementById('addEventForm').addEventListener('submit', function(e) {
+        document.getElementById('addEventForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const title = document.getElementById('eventTitle').value;
             const date = document.getElementById('eventDate').value;
             const description = document.getElementById('eventDescription').value;
             
-            appData.events.push({
+            const newEvent = {
                 id: Date.now(),
                 title,
                 date,
-                description
-            });
+                description,
+                lastUpdated: new Date().toISOString()
+            };
             
-            saveData();
-            renderEvents();
+            const updatedEvents = [...appData.events, newEvent];
+            await saveData('events', updatedEvents);
+            
             closeModal('addEventModal');
             this.reset();
+            renderEvents();
         });
 
         // Добавление задания
-        document.getElementById('addTaskForm').addEventListener('submit', function(e) {
+        document.getElementById('addTaskForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const title = document.getElementById('taskTitle').value;
             const description = document.getElementById('taskDescription').value;
             const deadline = document.getElementById('taskDeadline').value;
             
-            appData.tasks.push({
+            const newTask = {
                 id: Date.now(),
                 title,
                 description,
                 deadline,
-                completed: false
-            });
+                completed: false,
+                lastUpdated: new Date().toISOString()
+            };
             
-            saveData();
-            renderTasks();
+            const updatedTasks = [...appData.tasks, newTask];
+            await saveData('tasks', updatedTasks);
+            
             closeModal('addTaskModal');
             this.reset();
+            renderTasks();
         });
 
         // Удаление стажера
-        function deleteTrainee(id) {
-            appData.trainees = appData.trainees.filter(trainee => trainee.id !== id);
-            saveData();
-            renderTrainees();
+        async function deleteTrainee(id) {
+            if (confirm('Вы уверены, что хотите удалить стажера?')) {
+                const updatedTrainees = appData.trainees.filter(trainee => trainee.id !== id);
+                await saveData('trainees', updatedTrainees);
+                renderTrainees();
+            }
         }
 
         // Удаление события
-        function deleteEvent(id) {
-            appData.events = appData.events.filter(event => event.id !== id);
-            saveData();
-            renderEvents();
+        async function deleteEvent(id) {
+            if (confirm('Вы уверены, что хотите удалить событие?')) {
+                const updatedEvents = appData.events.filter(event => event.id !== id);
+                await saveData('events', updatedEvents);
+                renderEvents();
+            }
         }
 
         // Удаление задания
-        function deleteTask(id) {
-            appData.tasks = appData.tasks.filter(task => task.id !== id);
-            saveData();
-            renderTasks();
+        async function deleteTask(id) {
+            if (confirm('Вы уверены, что хотите удалить задание?')) {
+                const updatedTasks = appData.tasks.filter(task => task.id !== id);
+                await saveData('tasks', updatedTasks);
+                renderTasks();
+            }
         }
 
         // Отметка задания как выполненного
-        function toggleTaskCompletion(id) {
-            const task = appData.tasks.find(task => task.id === id);
-            if (task) {
-                task.completed = !task.completed;
-                saveData();
-                renderTasks();
-            }
+        async function toggleTaskCompletion(id) {
+            const updatedTasks = appData.tasks.map(task => 
+                task.id === id ? { ...task, completed: !task.completed, lastUpdated: new Date().toISOString() } : task
+            );
+            
+            await saveData('tasks', updatedTasks);
+            renderTasks();
         }
 
         // Обновление счетчиков стажеров
@@ -789,6 +1071,28 @@
             document.getElementById('trainee-week-count').textContent = weekCount;
             document.getElementById('trainee-month-count').textContent = monthCount;
             document.getElementById('trainee-quarter-count').textContent = quarterCount;
+        }
+
+        // Получение текста оценки
+        function getGradeText(grade) {
+            switch(grade) {
+                case '5': return 'Отлично';
+                case '4': return 'Хорошо';
+                case '3': return 'Удовлетворительно';
+                case '2': return 'Неудовлетворительно';
+                default: return 'Не оценено';
+            }
+        }
+
+        // Получение класса для оценки
+        function getGradeClass(grade) {
+            switch(grade) {
+                case '5': return 'badge-success';
+                case '4': return 'badge-info';
+                case '3': return 'badge-warning';
+                case '2': return 'badge-danger';
+                default: return 'badge-info';
+            }
         }
 
         // Отображение всех данных
@@ -828,159 +1132,3 @@
             const listElement = document.getElementById(elementId);
             listElement.innerHTML = '';
             
-            if (trainees.length === 0) {
-                listElement.innerHTML = '<tr><td colspan="4" style="text-align: center;">Нет данных</td></tr>';
-                return;
-            }
-            
-            trainees.forEach(trainee => {
-                const gradeText = getGradeText(trainee.grade);
-                const gradeClass = getGradeClass(trainee.grade);
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${trainee.name}</td>
-                    <td><span class="badge ${gradeClass}">${gradeText}</span></td>
-                    <td>${trainee.days}</td>
-                    <td>
-                        <button class="btn btn-danger" onclick="deleteTrainee(${trainee.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                listElement.appendChild(row);
-            });
-        }
-
-        // Получение текста оценки
-        function getGradeText(grade) {
-            switch(grade) {
-                case '5': return 'Отлично';
-                case '4': return 'Хорошо';
-                case '3': return 'Удовлетворительно';
-                case '2': return 'Неудовлетворительно';
-                default: return 'Не оценено';
-            }
-        }
-
-        // Получение класса для оценки
-        function getGradeClass(grade) {
-            switch(grade) {
-                case '5': return 'badge-success';
-                case '4': return 'badge-info';
-                case '3': return 'badge-warning';
-                case '2': return 'badge-danger';
-                default: return 'badge-info';
-            }
-        }
-
-        // Отображение событий
-        function renderEvents() {
-            const eventsList = document.getElementById('events-list');
-            eventsList.innerHTML = '';
-            
-            if (appData.events.length === 0) {
-                eventsList.innerHTML = '<li class="event-item">Нет событий</li>';
-                return;
-            }
-            
-            // Сортировка событий по дате
-            const sortedEvents = [...appData.events].sort((a, b) => new Date(a.date) - new Date(b.date));
-            
-            sortedEvents.forEach(event => {
-                const eventDate = new Date(event.date);
-                const formattedDate = eventDate.toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                });
-                
-                const eventElement = document.createElement('li');
-                eventElement.className = 'event-item';
-                eventElement.innerHTML = `
-                    <div class="event-date">${formattedDate}</div>
-                    <div class="event-title">${event.title}</div>
-                    <div class="event-desc">${event.description}</div>
-                    <button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteEvent(${event.id})">
-                        <i class="fas fa-trash"></i> Удалить
-                    </button>
-                `;
-                eventsList.appendChild(eventElement);
-            });
-        }
-
-        // Отображение заданий
-        function renderTasks() {
-            const tasksList = document.getElementById('tasks-list');
-            tasksList.innerHTML = '';
-            
-            if (appData.tasks.length === 0) {
-                tasksList.innerHTML = '<div class="task-item">Нет заданий</div>';
-                return;
-            }
-            
-            // Сортировка заданий по дате
-            const sortedTasks = [...appData.tasks].sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-            
-            sortedTasks.forEach(task => {
-                const deadline = new Date(task.deadline);
-                const now = new Date();
-                const timeDiff = deadline - now;
-                const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-                
-                let taskClass = 'task-item';
-                if (task.completed) {
-                    taskClass += ' completed';
-                } else if (daysDiff < 2) {
-                    taskClass += ' urgent';
-                }
-                
-                const formattedDeadline = deadline.toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                
-                const taskElement = document.createElement('div');
-                taskElement.className = taskClass;
-                taskElement.innerHTML = `
-                    <div class="task-info">
-                        <h3>${task.title}</h3>
-                        <p>${task.description}</p>
-                        <div class="task-deadline">Срок: ${formattedDeadline}</div>
-                    </div>
-                    <div>
-                        <div class="countdown">${task.completed ? 'Выполнено' : `Осталось: ${daysDiff} дн.`}</div>
-                        <div style="display: flex; gap: 5px; margin-top: 10px;">
-                            <button class="btn ${task.completed ? 'btn-warning' : 'btn-success'}" onclick="toggleTaskCompletion(${task.id})">
-                                <i class="fas ${task.completed ? 'fa-undo' : 'fa-check'}"></i> ${task.completed ? 'Вернуть' : 'Выполнить'}
-                            </button>
-                            <button class="btn btn-danger" onclick="deleteTask(${task.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                tasksList.appendChild(taskElement);
-            });
-        }
-
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            loadData();
-            
-            // Закрытие модальных окон при клике вне их
-            window.addEventListener('click', function(event) {
-                const modals = document.querySelectorAll('.modal');
-                modals.forEach(modal => {
-                    if (event.target === modal) {
-                        modal.style.display = 'none';
-                    }
-                });
-            });
-        });
-    </script>
-</body>
-</html>
